@@ -22,8 +22,18 @@
       <img src="icon-180.png" alt="" class="logo">
       <h1>黄金比眉</h1>
       <p class="lead">フロントカメラに映った顔に、<br>眉毛の黄金バランスのガイドを重ねます。</p>
+      <!-- LINE・Instagram などのアプリの中で開いたとき -->
+      <div id="inAppNotice" class="notice" hidden>
+        <p><strong>アプリの中のブラウザで開いています。</strong><br>カメラが使えないことがあるので、Safari（Androidは Chrome）で開いてください。</p>
+        <p class="small-note">画面の「…」や共有のメニューから「ブラウザで開く」を選ぶか、URLをコピーして貼り付けてください。</p>
+        <button id="copyUrlButton" class="secondary">URLをコピー</button>
+      </div>
       <button id="startButton" class="primary">カメラを起動する</button>
-      <p class="note">映像はこのスマホの中だけで処理し、<br>どこにも送信・保存しません。</p>
+      <ul class="notes">
+        <li>映像はこのスマホの中だけで処理し、どこにも送信・保存しません。</li>
+        <li>初回は約7MBを読み込みます。Wi-Fiでのご利用がおすすめです。</li>
+        <li>ガイドと点数は目安です。明るさや顔の角度で変わります。</li>
+      </ul>
       <p id="startError" class="error" hidden></p>
     </section>
 
@@ -74,7 +84,7 @@
       <div class="card">
         <h2>眉の点数</h2>
         <div id="scoreEntries"></div>
-        <p class="small">※ 眉の位置は目安で判定しています</p>
+        <p class="disclaimer">※ 点数は、カメラに映った眉の位置と形から出した<strong>目安</strong>です。明るさや顔の角度で変わります。</p>
         <button id="closeScore" class="primary">閉じる</button>
       </div>
     </section>

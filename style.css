@@ -33,7 +33,22 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 #start .logo { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 6px 20px rgba(200, 80, 120, 0.25); }
 #start h1 { margin: 0; font-size: 28px; letter-spacing: 0.08em; }
 #start .lead { margin: 0; line-height: 1.7; }
-#start .note { margin: 0; font-size: 13px; line-height: 1.6; opacity: 0.8; }
+#start .notes {
+  margin: 4px 0 0; padding: 12px 16px 12px 30px; max-width: 340px; text-align: left;
+  font-size: 13px; line-height: 1.6; background: rgba(255, 255, 255, 0.55); border-radius: 14px;
+}
+#start .notes li + li { margin-top: 4px; }
+.notice {
+  max-width: 340px; padding: 14px 16px; border-radius: 14px; text-align: left;
+  background: #fff; color: #5a3a40; box-shadow: 0 4px 14px rgba(200, 80, 120, 0.2);
+  display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.6;
+}
+.notice p { margin: 0; }
+.notice .small-note { font-size: 12px; opacity: 0.8; }
+.secondary {
+  align-self: center; padding: 8px 20px; border-radius: 999px; font-weight: 600; font-size: 14px;
+  color: var(--pink); background: #fff; border: 1.5px solid var(--pink);
+}
 .error { color: #b00020; font-size: 14px; line-height: 1.6; margin: 0; }
 
 .primary {
@@ -104,7 +119,10 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .card h2 { margin: 0; text-align: center; font-size: 17px; }
 .card .primary { align-self: center; padding: 10px 28px; font-size: 15px; }
-.small { margin: 0; text-align: center; font-size: 11px; opacity: 0.6; }
+.disclaimer {
+  margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.6;
+  background: rgba(233, 30, 99, 0.08); color: #6b3a48;
+}
 .entry { display: flex; flex-direction: column; gap: 8px; }
 .entry-head { display: flex; align-items: baseline; gap: 6px; }
 .entry-head .title { font-weight: 700; font-size: 15px; flex: 1; }

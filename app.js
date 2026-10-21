@@ -1,9 +1,12 @@
 // 黄金比眉（ブラウザ版）: カメラ映像に眉毛の黄金バランスのガイドを重ねる
-import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs";
+// 顔検出（MediaPipe）のファイルは、外部のサービスに頼らないよう、このページと同じ場所（mediapipe/）に置いている
+import { FaceLandmarker, FilesetResolver } from "./mediapipe/vision_bundle.mjs";
 import { buildGuide, LANDMARKS } from "./guide.js";
 
-const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
-const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const localFile = (path) => new URL(path, import.meta.url).href;
+const MODEL_URL = localFile("./mediapipe/face_landmarker.task");
+// とても古い機種（iOS 16.3 以前など）向けの版は置いていないので、そのときだけ配布元（jsDelivr）から読み込む
+const FALLBACK_WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
 
 const COLORS = { pink: "#e91e63", red: "#ff2626", white: "#ffffff", yellow: "#ffe000" };
 
@@ -28,6 +31,29 @@ let lastTimestamp = -1;
 
 // ---- 起動 ----
 
+// LINE・Instagram などのアプリの中のブラウザでは、カメラが使えないことがある
+const userAgent = navigator.userAgent;
+const inLine = /\bLine\//i.test(userAgent);
+const inAppBrowser = inLine || /Instagram|FBAN|FBAV|FB_IAB|Twitter|TikTok|musical_ly|BytedanceWebview|MicroMessenger/i.test(userAgent);
+// LINE は URL に openExternalBrowser=1 を付けると、Safari（Androidは標準のブラウザ）で開き直してくれる
+if (inLine && !new URLSearchParams(location.search).has("openExternalBrowser")) {
+  const url = new URL(location.href);
+  url.searchParams.set("openExternalBrowser", "1");
+  location.replace(url.toString());
+}
+if (inAppBrowser) $("inAppNotice").hidden = false;
+
+$("copyUrlButton").addEventListener("click", async () => {
+  const url = new URL(location.href);
+  url.searchParams.delete("openExternalBrowser");
+  try {
+    await navigator.clipboard.writeText(url.toString());
+    $("copyUrlButton").textContent = "コピーしました";
+  } catch {
+    $("copyUrlButton").textContent = url.toString();
+  }
+});
+
 $("startButton").addEventListener("click", start);
 const testImage = new URLSearchParams(location.search).get("img");
 if (testImage) start(); // 確認用モード: カメラの代わりに写真を使う
@@ -49,7 +75,9 @@ async function start() {
     $("start").hidden = false;
     $("startError").textContent = error.name === "NotAllowedError"
       ? "カメラの使用が許可されていません。Safariの設定（ぁあ → Webサイトの設定 → カメラ）で許可してから、もう一度押してください。"
-      : "起動できませんでした。通信状況を確認して、もう一度お試しください。";
+      : error.name === "NoCameraAPI"
+        ? "このブラウザではカメラを使えません。Safari（Androidは Chrome）で開いてください。"
+        : "起動できませんでした。通信状況を確認して、もう一度お試しください。";
     $("startError").hidden = false;
   }
 }
@@ -60,6 +88,9 @@ async function openSource() {
     img.src = testImage;
     await img.decode();
     return img;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw Object.assign(new Error("camera API is not available"), { name: "NoCameraAPI" });
   }
   const stream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1280 } },
@@ -74,15 +105,22 @@ async function openSource() {
 }
 
 async function createLandmarker() {
-  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  const vision = await FilesetResolver.isSimdSupported()
+    ? {
+        wasmLoaderPath: localFile("./mediapipe/wasm/vision_wasm_internal.js"),
+        wasmBinaryPath: localFile("./mediapipe/wasm/vision_wasm_internal.wasm"),
+      }
+    : await FilesetResolver.forVisionTasks(FALLBACK_WASM_URL);
   const options = (delegate) => ({
     baseOptions: { modelAssetPath: MODEL_URL, delegate },
     runningMode: "VIDEO",
     numFaces: 1,
     outputFacialTransformationMatrixes: true,
   });
+  // GPU で動かすほうが速いが、機種によっては準備が終わらないことがあるので、8秒待っても終わらなければ CPU で動かす
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("GPU timeout")), 8000));
   try {
-    return await FaceLandmarker.createFromOptions(vision, options("GPU"));
+    return await Promise.race([FaceLandmarker.createFromOptions(vision, options("GPU")), timeout]);
   } catch {
     return await FaceLandmarker.createFromOptions(vision, options("CPU"));
   }
