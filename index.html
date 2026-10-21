@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="黄金比眉">
+  <title>黄金比眉</title>
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" href="icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="view"></canvas>
+
+    <!-- 最初の画面 -->
+    <section id="start">
+      <img src="icon-180.png" alt="" class="logo">
+      <h1>黄金比眉</h1>
+      <p class="lead">フロントカメラに映った顔に、<br>眉毛の黄金バランスのガイドを重ねます。</p>
+      <button id="startButton" class="primary">カメラを起動する</button>
+      <p class="note">映像はこのスマホの中だけで処理し、<br>どこにも送信・保存しません。</p>
+      <p id="startError" class="error" hidden></p>
+    </section>
+
+    <!-- 読み込み中 -->
+    <div id="loading" hidden><div class="spinner"></div><p>準備しています…</p></div>
+
+    <!-- 顔の向きの確認用（ポイント表示のとき） -->
+    <div id="angle" hidden></div>
+
+    <!-- 画面下の操作 -->
+    <section id="controls" hidden>
+      <p id="message" hidden></p>
+      <button id="scoreButton" class="score">採点する</button>
+      <div class="toolbar">
+        <label class="tool" id="colorTool">
+          <span class="swatch"></span>
+          <span>色</span>
+          <select id="colorSelect" aria-label="線の色">
+            <option value="pink">ピンク</option>
+            <option value="red">赤</option>
+            <option value="white">白</option>
+            <option value="yellow">黄</option>
+          </select>
+        </label>
+        <button class="tool" id="linesTool" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><path d="M6 3v18M14 3v18M18 3v18M2 12h20M9 21 20 6"/></svg>
+          <span>ライン</span>
+        </button>
+        <button class="tool" id="browTool" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><path d="M3 14c4-6 10-7 18-3" stroke-dasharray="2.5 2"/></svg>
+          <span>おすすめ眉</span>
+        </button>
+        <button class="tool" id="pointsTool" aria-pressed="false">
+          <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg>
+          <span>ポイント</span>
+        </button>
+      </div>
+      <!-- 画面での位置に合わせて「左眉・両方・右眉」の順（映像は鏡と同じ映り方） -->
+      <div class="segmented" role="radiogroup" aria-label="ガイドを出す眉">
+        <button data-side="left" role="radio">左眉</button>
+        <button data-side="both" role="radio">両方</button>
+        <button data-side="right" role="radio">右眉</button>
+      </div>
+    </section>
+
+    <!-- 採点の結果 -->
+    <section id="scorecard" hidden>
+      <div class="card">
+        <h2>眉の点数</h2>
+        <div id="scoreEntries"></div>
+        <p class="small">※ 眉の位置は目安で判定しています</p>
+        <button id="closeScore" class="primary">閉じる</button>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
