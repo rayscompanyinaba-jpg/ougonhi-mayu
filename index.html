@@ -28,6 +28,11 @@
         <p class="small-note">画面の「…」や共有のメニューから「ブラウザで開く」を選ぶか、URLをコピーして貼り付けてください。</p>
         <button id="copyUrlButton" class="secondary">URLをコピー</button>
       </div>
+      <!-- 終了したとき・ほかのアプリに切り替えてカメラを止めたとき -->
+      <div id="endedNotice" class="notice" hidden>
+        <p><strong id="endedTitle">終了しました</strong><br>カメラを止めました。</p>
+        <p class="small-note" id="endedHowToClose"></p>
+      </div>
       <button id="startButton" class="primary">カメラを起動する</button>
       <ul class="notes">
         <li>映像はこのスマホの中だけで処理し、どこにも送信・保存しません。</li>
@@ -46,7 +51,10 @@
     <!-- 画面下の操作 -->
     <section id="controls" hidden>
       <p id="message" hidden></p>
-      <button id="scoreButton" class="score">採点する</button>
+      <div class="action-row">
+        <button id="scoreButton" class="score">採点する</button>
+        <button id="endButton" class="end">終了</button>
+      </div>
       <div class="toolbar">
         <label class="tool" id="colorTool">
           <span class="swatch"></span>
@@ -82,10 +90,18 @@
     <!-- 採点の結果 -->
     <section id="scorecard" hidden>
       <div class="card">
-        <h2>眉の点数</h2>
-        <div id="scoreEntries"></div>
-        <p class="disclaimer">※ 点数は、カメラに映った眉の位置と形から出した<strong>目安</strong>です。明るさや顔の角度で変わります。</p>
-        <button id="closeScore" class="primary">閉じる</button>
+        <!-- 見出しと閉じるボタンはいつも見えるようにして、点数の部分だけスクロールする -->
+        <div class="card-header">
+          <h2>眉の点数</h2>
+          <button id="closeScoreX" class="close-x" aria-label="閉じる">×</button>
+        </div>
+        <div class="card-body">
+          <div id="scoreEntries"></div>
+          <p class="disclaimer">※ 点数は、カメラに映った眉の位置と形から出した<strong>目安</strong>です。明るさや顔の角度で変わります。</p>
+        </div>
+        <div class="card-footer">
+          <button id="closeScore" class="primary">閉じる</button>
+        </div>
       </div>
     </section>
   </div>

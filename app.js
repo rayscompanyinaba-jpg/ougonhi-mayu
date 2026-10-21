@@ -28,6 +28,8 @@ let source = null;            // <video>（カメラ）か <img>（確認用モ�
 let face = null;              // 最新のコマの顔（なめらかにした点・顔の向き）
 let rawPoints = null;         // 採点用: なめらかにする前の点
 let lastTimestamp = -1;
+let running = false;          // カメラを使って動いているか
+let looping = false;          // 毎コマの処理が回っているか
 
 // ---- 起動 ----
 
@@ -63,12 +65,17 @@ async function start() {
   $("start").hidden = true;
   $("loading").hidden = false;
   try {
-    const [sourceElement, faceLandmarker] = await Promise.all([openSource(), createLandmarker()]);
+    // 顔検出の準備は一度だけ（「もう一度使う」のときは使い回す）
+    const [sourceElement, faceLandmarker] = await Promise.all([openSource(), landmarker ?? createLandmarker()]);
     source = sourceElement;
     landmarker = faceLandmarker;
+    running = true;
     $("loading").hidden = true;
     $("controls").hidden = false;
-    requestAnimationFrame(loop);
+    if (!looping) {
+      looping = true;
+      requestAnimationFrame(loop);
+    }
   } catch (error) {
     console.error(error);
     $("loading").hidden = true;
@@ -135,6 +142,10 @@ function sourceSize() {
 // ---- 毎コマの処理 ----
 
 function loop() {
+  if (!running) {
+    looping = false;
+    return;
+  }
   const { width, height } = sourceSize();
   if (width && height) {
     let timestamp = performance.now();
@@ -298,6 +309,45 @@ function withAlpha(hex, alpha) {
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
+// ---- 終了 ----
+
+/**
+ * カメラを止めて、最初の画面に戻す。
+ * ウェブページから Safari のタブそのものは閉じられないので、閉じ方を案内する
+ * @param reason "ended"（終了ボタン） / "paused"（ほかのアプリに切り替えた）
+ */
+function stopCamera(reason) {
+  running = false;
+  if (source instanceof HTMLVideoElement) {
+    source.srcObject?.getTracks().forEach((track) => track.stop());
+    source.srcObject = null;
+  }
+  source = null;
+  face = null;
+  rawPoints = null;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  $("controls").hidden = true;
+  $("scorecard").hidden = true;
+  $("scoreButton").hidden = false;
+  $("angle").hidden = true;
+  $("endedTitle").textContent = reason === "paused" ? "ほかのアプリに切り替えたので、止めました" : "終了しました";
+  $("endedHowToClose").textContent = navigator.standalone
+    ? "ホーム画面から開いている場合は、そのままホーム画面に戻れば終了です。"
+    : "このページを閉じるときは、Safari のタブのボタン（四角が2つ重なった形）を押して、このページの「×」を押してください。";
+  $("endedNotice").hidden = false;
+  $("startButton").textContent = "もう一度使う";
+  $("start").hidden = false;
+}
+
+$("endButton").addEventListener("click", () => stopCamera("ended"));
+
+// ほかのアプリに切り替えたら、カメラを止める
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && running && !testImage) stopCamera("paused");
+});
+
 // ---- 案内 ----
 
 let noticeText = null, noticeTimer = null;
@@ -378,10 +428,12 @@ function showScore(sides) {
   $("scoreButton").hidden = true;
 }
 
-$("closeScore").addEventListener("click", () => {
+function closeScore() {
   $("scorecard").hidden = true;
   $("scoreButton").hidden = false;
-});
+}
+$("closeScore").addEventListener("click", closeScore);
+$("closeScoreX").addEventListener("click", closeScore);
 
 function element(tag, className, text) {
   const e = document.createElement(tag);
