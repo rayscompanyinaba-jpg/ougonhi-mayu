@@ -198,6 +198,39 @@ const guideOpacity = (f) => 1 - Math.min(Math.max((angleFromFront(f) - 8) / 10, 
 
 let viewTransform = null; // 映像の座標 → 画面の座標
 
+// 表示する範囲（顔を追いかける）。眉の中心を画面の上から 35% の位置に置き、両目の外側の幅が画面の幅の 55% くらいになるよう拡大する
+const FRAMING = { browHeight: 0.35, eyesWidth: 0.55, maxZoom: 1.6, follow: 0.08 };
+let framing = null; // { zoom, centerX, centerY }（映像の座標で、画面の目標位置に置く点）
+
+function updateFraming(width, height, cw, ch) {
+  const cover = Math.max(cw / width, ch / height);
+  // 顔がないときは、映像の真ん中を画面の真ん中に置く（今まで通りの表示）
+  let target = { zoom: 1, centerX: width / 2, centerY: height / 2, screenY: 0.5 };
+  if (face) {
+    const p = face.points;
+    const brows = [...LANDMARKS.right.browUpper, ...LANDMARKS.left.browUpper].map((i) => p[i]);
+    const browCenter = {
+      x: brows.reduce((s, q) => s + q.x, 0) / brows.length,
+      y: brows.reduce((s, q) => s + q.y, 0) / brows.length,
+    };
+    const eyesSpan = Math.hypot(p[LANDMARKS.right.eyeOuter].x - p[LANDMARKS.left.eyeOuter].x,
+                                p[LANDMARKS.right.eyeOuter].y - p[LANDMARKS.left.eyeOuter].y);
+    const zoom = Math.min(Math.max((cw * FRAMING.eyesWidth) / (eyesSpan * cover), 1), FRAMING.maxZoom);
+    target = { zoom, centerX: browCenter.x, centerY: browCenter.y, screenY: FRAMING.browHeight };
+  }
+  // 急に動くと見づらいので、毎コマ少しずつ目標に近づける
+  framing = framing
+    ? Object.fromEntries(Object.keys(target).map((k) => [k, framing[k] + (target[k] - framing[k]) * FRAMING.follow]))
+    : target;
+
+  const scale = cover * framing.zoom;
+  // 映像が画面からはみ出さない（黒い余白が出ない）範囲で、目標の位置に合わせる
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const offsetX = clamp(cw / 2 - framing.centerX * scale, cw - width * scale, 0);
+  const offsetY = clamp(ch * framing.screenY - framing.centerY * scale, ch - height * scale, 0);
+  return { scale, offsetX, offsetY };
+}
+
 function draw(width, height) {
   const dpr = window.devicePixelRatio || 1;
   const cw = canvas.clientWidth, ch = canvas.clientHeight;
@@ -208,9 +241,9 @@ function draw(width, height) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cw, ch);
 
-  // 映像を画面いっぱいに拡大し、はみ出した部分を切り取って、鏡のように左右反転して描く
-  const scale = Math.max(cw / width, ch / height);
-  const offsetX = (cw - width * scale) / 2, offsetY = (ch - height * scale) / 2;
+  // 映像を画面いっぱいに拡大し、はみ出した部分を切り取って、鏡のように左右反転して描く。
+  // 顔が見つかっているときは、眉が画面の上のほうに大きめに映るよう、表示する範囲をなめらかに追いかける
+  const { scale, offsetX, offsetY } = updateFraming(width, height, cw, ch);
   viewTransform = (p) => ({ x: p.x * scale + offsetX, y: p.y * scale + offsetY });
   ctx.save();
   ctx.translate(offsetX + width * scale, offsetY);
@@ -325,6 +358,7 @@ function stopCamera(reason) {
   source = null;
   face = null;
   rawPoints = null;
+  framing = null;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -333,12 +367,29 @@ function stopCamera(reason) {
   $("scoreButton").hidden = false;
   $("angle").hidden = true;
   $("endedTitle").textContent = reason === "paused" ? "ほかのアプリに切り替えたので、止めました" : "終了しました";
-  $("endedHowToClose").textContent = navigator.standalone
-    ? "ホーム画面から開いている場合は、そのままホーム画面に戻れば終了です。"
-    : "このページを閉じるときは、Safari のタブのボタン（四角が2つ重なった形）を押して、このページの「×」を押してください。";
+  $("endedHowToClose").textContent = howToCloseText();
   $("endedNotice").hidden = false;
   $("startButton").textContent = "もう一度使う";
   $("start").hidden = false;
+}
+
+/** 使っているブラウザに合わせた、このページの閉じ方 */
+function howToCloseText() {
+  const calm = "カメラは止まっているので、このまま別のアプリに移っても大丈夫です。";
+  if (navigator.standalone) return `ホーム画面から開いているので、そのままホーム画面に戻れば終了です。`;
+  const ua = navigator.userAgent;
+  const iOS = /iPhone|iPad|iPod/.test(ua);
+  let steps;
+  if (/CriOS/.test(ua)) {
+    steps = "閉じるときは、画面の下にある「数字が書かれた四角いボタン」を押して、このページの右上の「×」を押してください。";
+  } else if (/Android/.test(ua) && /Chrome/.test(ua)) {
+    steps = "閉じるときは、画面の右上にある「数字が書かれた四角いボタン」を押して、このページの「×」を押してください。";
+  } else if (iOS && /Safari/.test(ua) && !/FxiOS|EdgiOS/.test(ua)) {
+    steps = "閉じるときは、画面の下（または上）にある「四角が2つ重なったボタン」を押して、このページの「×」を押してください。";
+  } else {
+    steps = "閉じるときは、ブラウザのタブの一覧から、このページを閉じてください。";
+  }
+  return `${calm}\n${steps}`;
 }
 
 $("endButton").addEventListener("click", () => stopCamera("ended"));

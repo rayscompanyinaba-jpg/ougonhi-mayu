@@ -44,7 +44,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.6;
 }
 .notice p { margin: 0; }
-.notice .small-note { font-size: 12px; opacity: 0.8; }
+.notice .small-note { font-size: 12px; opacity: 0.8; white-space: pre-line; }
 .secondary {
   align-self: center; padding: 8px 20px; border-radius: 999px; font-weight: 600; font-size: 14px;
   color: var(--pink); background: #fff; border: 1.5px solid var(--pink);
